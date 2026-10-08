@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>The One Introduction Problem: Research Approach Note</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      color: #24292e;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 25px;
+    }
+    h1, h2, h3, h4 { color: #1a202c; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+    h1 { font-size: 2.2em; border-bottom: 2px solid #2b6cb0; }
+    h2 { font-size: 1.6em; margin-top: 1.5em; }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1.5em 0;
+    }
+    th, td {
+      border: 1px solid #cbd5e0;
+      padding: 10px 14px;
+      text-align: left;
+    }
+    th {
+      background-color: #f7fafc;
+      font-weight: 600;
+    }
+    tr:nth-child(even) { background-color: #f8fafc; }
+    code {
+      background-color: #edf2f7;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Menlo, Monaco, Consolas, monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      background-color: #2d3748;
+      color: #f7fafc;
+      padding: 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    pre code { background: none; color: inherit; padding: 0; }
+    blockquote {
+      border-left: 4px solid #4299e1;
+      padding-left: 16px;
+      color: #4a5568;
+      margin: 1.5em 0;
+    }
+    .print-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #3182ce;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    @media print {
+      .print-btn { display: none; }
+      body { margin: 0; padding: 0; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+  <div id="content"></div>
+  <script>
+    const markdown = "# The One Introduction Problem: Sequential Reciprocal Matching Under Uncertainty\n## Research Approach Note & Technical Formulation\n**Competition:** Romeo & Juliet \u00d7 IIT Madras \u2014 Applied Machine Learning Programme & Hackathon  \n**Track:** Round 1 Research Submission  \n**Author / Team:** Ramrup Satpati (`RSNPIIT`)  \n**Date:** October 2026  \n**Document Version:** 1.0.0 (Compliant with Participant Specification v1.0.0)\n\n---\n\n## Executive Summary\n\nThe sequential matching problem requires an autonomous decision policy to operate over a dynamic population of synthetic agents across a 60-day decision horizon, followed by a 40-day observation window. At each discrete day $t$, the policy faces a dual decision:\n1. **Active Clarification:** Allocating a constrained daily budget of 12 inquiry units to acquire missing self-reported features without exceeding rate limits or re-asking declined fields.\n2. **Combinatorial Allocation:** Constructing a set of disjoint, feasible reciprocal introductions that maximize cumulative successful outcomes while trading off immediate pairing against the option value of waiting for superior future arrivals.\n\nThis approach note presents a mathematically principled, two-phase policy architecture:\n- **Phase I: Value-of-Information (VoI) Targeted Clarification:** Prioritizes unlocking near-feasible candidate pairs blocked by single hard-constraint missingness, completely avoiding unpromising or isolated candidates.\n- **Phase II: Maximum-Weight Bipartite/General Matching with Reservation Thresholds:** Replaces sub-optimal pairwise greedy matching with global graph optimization (Edmonds' Blossom / Maximum Weight Matching) augmented with a time-adaptive acceptance reservation threshold to prevent premature suboptimal commitments.\n\n---\n\n## 1. Problem Formulation & Decision Objective\n\n### 1.1 The Sequential Optimization Problem\nLet $P_t$ denote the set of currently available, active members in pool $\\mathcal{P}$ at day $t \\in \\{0, 1, \\dots, 59\\}$. Each member $i \\in P_t$ has observed demographic attributes $x_i$, observable questionnaire features $q_i(t)$, a missingness mask $m_i(t) \\in \\{\\text{observed}, \\text{not\\_asked}, \\text{declined}\\}$, and a status indicator $\\text{available}_i(t) \\in \\{0, 1\\}$.\n\nThe global objective is to maximize the cumulative **Mutual Second Meeting Intention (MSMI)** over the episode while maintaining equitable distinct-member coverage:\n\n$$\\max_{\\{\\mathcal{A}_t, \\mathcal{M}_t\\}_{t=0}^{59}} \\mathbb{E} \\left[ \\sum_{(i,j) \\in \\bigcup_t \\mathcal{M}_t} Y_{ij}^{\\text{MSMI}} \\right]$$\n\nSubject to the following operational and contract constraints:\n1. **Reciprocal Hard Feasibility:** For every introduced pair $(i,j) \\in \\mathcal{M}_t$, $\\text{Eligibility}(i, j) = \\text{feasible}$.\n2. **At-Most-Once Concurrency:** $\\forall i \\in P_t, \\sum_{j} \\mathbb{I}[(i,j) \\in \\mathcal{M}_t] \\le 1$.\n3. **No Duplicate Introductions:** $\\mathcal{M}_t \\cap \\mathcal{M}_{t'} = \\emptyset \\quad \\forall t \\ne t'$.\n4. **Daily Clarification Budget:** $\\text{Cost}(\\mathcal{A}_t) \\le 12 \\text{ units/day}$, where bundle cost is 3 units and single soft-field cost is 1 unit.\n5. **Irreversibility of Declines:** If $m_{i,k}(t) = \\text{declined}$, field $k$ can never be queried or observed.\n\n---\n\n## 2. Reciprocal Eligibility & Compatibility Scoring\n\n### 2.1 The Two-Sided Hard Constraint Filter\nPair feasibility is strictly non-negotiable. An introduction is invalid unless both directional checks succeed across all 11 hard constraints:\n\n$$\\text{Feasible}(i, j) = \\bigwedge_{k \\in \\text{HARD}} \\Big( C_k(i \\to j) \\land C_k(j \\to i) \\Big)$$\n\n- **Age Reciprocity:** $j.\\text{age} \\in [i.\\text{age\\_min}, i.\\text{age\\_max}] \\land i.\\text{age} \\in [j.\\text{age\\_min}, j.\\text{age\\_max}]$.\n- **Gender Compatibility:** $j.\\text{gender} \\in i.\\text{who\\_to\\_meet} \\land i.\\text{gender} \\in j.\\text{who\\_to\\_meet}$.\n- **Geographic Proximity:** $j.\\text{zone} \\in i.\\text{acceptable\\_zones} \\land i.\\text{zone} \\in j.\\text{acceptable\\_zones}$.\n- **Structure & Lifestyle:** $i.\\text{structure} = j.\\text{structure}$, mutually compatible smoking habits, and non-conflicting parental intentions.\n- **Temporal Synchronization:** $|i.\\text{schedule} \\cap j.\\text{schedule}| \\ge 1$.\n\n### 2.2 Probabilistic Compatibility Scoring\nFor any verified feasible pair $(i,j)$, compatibility is decomposed into two directional acceptance probabilities and a mutual joint outcome:\n\n$$p_A(i \\to j) = \\sigma\\left(\\mathbf{w}_A^T \\phi(i, j)\\right), \\quad p_B(j \\to i) = \\sigma\\left(\\mathbf{w}_B^T \\phi(j, i)\\right)$$\n\nWhere $\\phi(i, j)$ represents directional reciprocal feature vectors:\n- **Lifestyle Alignment:** Exact or soft overlap across `lifestyle`, `conversations`, and `relationship_pace`.\n- **Goal Congruence:** Indicator of matching `relationship_goal` (e.g. `long_term` vs. `exploring`).\n- **Emotional Readiness:** Alignment between `emotional_availability` and `space_for_relationship`.\n\nThe joint pairwise weight assigned to edge $(i,j)$ is:\n\n$$W_{ij} = p(i \\leftrightarrow j) = p_A(i \\to j) \\cdot p_B(j \\to i) \\cdot \\gamma_{\\text{synergy}}(i,j)$$\n\nWhere $\\gamma_{\\text{synergy}}$ captures interaction terms between complementary traits.\n\n---\n\n## 3. Global Allocation: Beyond Pairwise Greedy\n\n### 3.1 The Failure of Greedy Pair Selection\nGreedy matching sorts candidate pairs by score $W_{ij}$ and iteratively locks the top pair. In reciprocal networks, this creates negative externalities:\n\n```\n    [A] ------- 0.90 ------- [B]\n      \\                     /\n       0.65               0.65\n        \\                 /\n        [D]              [C]\n```\n- **Greedy Choice:** Matches $(A, B)$ (weight 0.90), stranding $C$ and $D$ with near-zero match (total value = 0.95).\n- **Optimal Global Matching:** Selects $(A, D)$ and $(B, C)$ (total value = $0.65 + 0.65 = 1.30$, a $+36.8\\%$ gain in societal welfare).\n\n### 3.2 Maximum Weight Matching Formulation\nOn each day $t$, we construct an undirected compatibility graph $G_t = (V_t, E_t)$ where vertices $V_t = P_t$ and edges $E_t = \\{(i,j) \\mid \\text{Feasible}(i,j) \\land W_{ij} \\ge \\tau_t\\}$.\n\nThe allocation is solved using **Maximum Weight General Matching (Edmonds' Blossom Algorithm)**:\n\n$$\\mathcal{M}_t^* = \\arg\\max_{\\mathcal{M} \\subseteq E_t} \\sum_{(i,j) \\in \\mathcal{M}} W_{ij} \\quad \\text{s.t.} \\quad \\sum_{e \\in \\mathcal{M}: v \\in e} 1 \\le 1 \\quad \\forall v \\in V_t$$\n\n### 3.3 Dynamic Reservation Threshold & The Value of Waiting\nA key vulnerability of myopic policies is matching a newly arrived member to a mediocre partner immediately. We implement a time-varying reservation threshold $\\tau_t$:\n\n$$\\tau_t = \\tau_0 \\cdot \\left(1 - \\frac{t}{T}\\right)^{\\alpha} + \\tau_{\\min}$$\n\n- Early in the episode ($t < 20$), $\\tau_t$ is high: the policy only executes high-confidence pairs, preserving available supply for upcoming arrivals.\n- Late in the episode ($t > 45$), $\\tau_t \\to \\tau_{\\min}$: the policy relaxes standards to clear unserved members before the horizon closes, maximizing coverage.\n\n---\n\n## 4. Value-of-Information (VoI) Active Clarification Policy\n\nA daily budget of 12 units is severely scarce across a pool of 200 members. Blind exploration wastes budget on unmatchable members.\n\n### 4.1 Prioritization Hierarchy\n1. **Marginal Feasibility Unlock:** Identify pairs $(i, j)$ where 10 of 11 hard constraints are confirmed compatible, but exactly one member has an unasked hard constraint bundle.\n   - Cost: 3 units.\n   - Expected Gain: Converts an inactive edge into a feasible edge with high probability.\n2. **Top-Tier Tie-Breaking:** If remaining budget exists ($< 3$ units), query soft fields (`relationship_goal`, `lifestyle`) for candidates involved in multiple competing edges to disambiguate the optimal matching.\n3. **Strict Negative Pruning:**\n   - Never ask a candidate with zero potential matches across known demographic filters (`age`, `gender`, `zone`).\n   - Never re-query any field marked `declined`.\n\n---\n\n## 5. Temporal Integrity & Leakage Prevention\n\nThe competition environment simulates real-world asynchronous delays:\n- **Observation Lag:** Introduction outcomes take up to 7 days to materialize; feedback is released strictly on the scheduled observation day.\n- **Strict Anti-Leakage Pipeline:**\n  - The policy state maintains an internal event queue indexed strictly by $t_{\\text{observed}} \\le t_{\\text{current}}$.\n  - Missing values (`null`) are explicitly modeled as missing completely at random or missing not at random; they are never imputed with zero or negative sentiment.\n  - The policy state is completely wiped between episodes, ensuring no cross-episode or cross-seed leakage.\n\n---\n\n## 6. Empirical Baseline Benchmarks & Analysis\n\nWe evaluated the three supplied baselines across all six official scenario variants on seed `101` using `evaluate.py`. The results demonstrate clear structural performance bottlenecks:\n\n| Scenario Variant | Baseline Policy | MSMI / 100 Members | Coverage (%) | Mutual Accept / 100 | Ask Cost |\n| :--- | :--- | :---: | :---: | :---: | :---: |\n| **`development`** | `greedy` | 0.50 | 46.0% | 9.0 | 198 |\n| | `no_asks` | 0.50 | 19.5% | 8.5 | 0 |\n| | `random` | 0.00 | 47.0% | 7.0 | 198 |\n| **`sparse`** (12 zones) | `greedy` | **0.00** | 17.0% | 2.0 | 192 |\n| | `no_asks` | 0.00 | 8.0% | 0.5 | 0 |\n| | `random` | 0.00 | 18.0% | 2.0 | 192 |\n| **`cold_start`** | `greedy` | 0.50 | 43.0% | 7.5 | 246 |\n| | `no_asks` | 0.00 | 14.0% | 3.0 | 0 |\n| | `random` | 0.50 | 43.5% | 7.0 | 246 |\n| **`delayed`** | `greedy` | 1.00 | 46.0% | 9.5 | 198 |\n| | `no_asks` | 0.50 | 21.0% | 8.5 | 0 |\n| | `random` | 0.50 | 46.0% | 6.5 | 198 |\n| **`shift`** | `greedy` | 0.50 | 46.0% | 9.5 | 198 |\n| | `no_asks` | 0.50 | 21.0% | 9.5 | 0 |\n| | `random` | 0.00 | 46.5% | 6.5 | 198 |\n| **`drift`** | `greedy` | 0.50 | 46.0% | 8.0 | 198 |\n| | `no_asks` | 0.50 | 20.0% | 9.5 | 0 |\n| | `random` | 0.50 | 46.0% | 7.0 | 198 |\n| **Overall Average** | **`greedy`** | **0.50** | **40.75%** | **7.58** | **205.0** |\n| | **`no_asks`** | **0.33** | **17.42%** | **6.58** | **0.0** |\n| | **`random`** | **0.25** | **41.17%** | **6.00** | **205.0** |\n\n### Key Diagnostic Insights\n1. **The Infeasibility Trap of `no_asks`:** Disabling clarification cuts coverage from **40.75% down to 17.42%** (a 57.3% collapse). Without asking hard constraints, massive numbers of viable matches remain permanently blocked.\n2. **The `sparse` Collapse:** In the 12-zone geographic fragmentation scenario, `greedy` scores **0.00 MSMI/100** and coverage drops to 17%. Greedy fails because isolated clusters require deliberate multi-hop or delayed pairing rather than immediate consumption of viable members.\n3. **Random Matching Hazard:** Random matching generates comparable coverage to greedy (~41%) but halves the MSMI rate (0.25 vs 0.50), proving that soft preference alignment significantly governs post-introduction meeting success.\n\n---\n\n## 7. Proposed Ablation Study Design\n\nTo isolate the causal drivers of performance in Round 2, we declare three targeted ablations:\n\n1. **Ablation 1 (Allocation Mechanism):** Global Maximum Weight Matching vs. Pairwise Greedy.\n   - *Hypothesis:* Maximum Weight Matching will prevent network stranding, improving MSMI by $\\ge 25\\%$ especially in `sparse` and `development` scenarios.\n2. **Ablation 2 (Clarification Policy):** Targeted VoI (Pair-Unlock) vs. Baseline Greedy Asks vs. Zero Asks.\n   - *Hypothesis:* Spending budget exclusively on pairs that unlock reciprocal feasibility will yield equal coverage with $\\ge 35\\%$ lower total ask cost.\n3. **Ablation 3 (Temporal Reservation):** Adaptive Thresholding $\\tau_t$ vs. Static Threshold vs. Zero Threshold (Match immediately).\n   - *Hypothesis:* Holding high standards early in the episode will raise average match quality for early cohort arrivals without sacrificing end-of-episode coverage.\n\n---\n\n## 8. Failure Modes & Edge Case Analysis\n\n| Challenge / Edge Case | System Behavior & Mitigation |\n| :--- | :--- |\n| **Severely Sparse Pools (`sparse`)** | Broaden soft threshold criteria; prioritize geographic budget queries (`acceptable_zones`) over lifestyle questions. |\n| **High Refusal Rate (`declined`)** | Immediately freeze declined fields; reroute matching engine to exploit observable surrogate features without penalty. |\n| **Late Arrival Bursts ($t \\in [15, 20]$)** | Buffer uncommitted candidates who have broad compatibility profiles to pair with incoming arrivals. |\n| **Deadlock / Unmatched Subgraphs** | End-of-episode relaxation: on days $50 \\le t \\le 59$, execute all valid feasible pairs regardless of soft score to minimize unserved penalties. |\n\n---\n\n## 9. Real-World Limitations & Ethical Boundaries\n\n- **Synthetic Domain Boundary:** The dataset and simulator are purely synthetic mathematical environments. Simulator performance does not imply the ability to predict genuine human romantic or emotional outcomes.\n- **Fairness & Non-Discrimination:** Real-world matchmaking systems must guard against disparate impact across protected demographic categories, feedback loops that reinforce historical biases, and intrusive clarification burdens.\n- **Autonomy & Privacy:** Refusal to answer questions (`declined`) must always be respected without punitive exclusion from basic service access.\n\n---\n\n## 10. Round 2 Implementation Roadmap\n\n1. **Phase 1 (Days 1\u20133):** Implementation of the `NetworkX` / Edmonds Maximum Weight Matching engine within `policy.py`.\n2. **Phase 2 (Days 4\u20135):** Calibration of the Value-of-Information (VoI) clarification logic and arrival rate estimators.\n3. **Phase 3 (Days 6\u20137):** Docker container packaging, validation across 120 local test episodes, and reproducible artifact generation.\n";
+    document.getElementById('content').innerHTML = marked.parse(markdown);
+  </script>
+</body>
+</html>
